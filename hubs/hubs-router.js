@@ -5,6 +5,13 @@ const Messages = require('../messages/messages-model.js');
 
 const router = express.Router();
 
+router.use((req, res, next) => {
+  console.log('hubs router!');
+  next();
+})
+
+router.use(errorHandler);
+
 // this only runs if the url has /api/hubs in it
 router.get('/', (req, res) => {
   Hubs.find(req.query)
@@ -20,24 +27,15 @@ router.get('/', (req, res) => {
   });
 });
 
+// router.use((req, res, next) => {
+//   console.log('i am here... always watching...');
+//   next();
+// })
+
 // /api/hubs/:id
 
-router.get('/:id', (req, res) => {
-  Hubs.findById(req.params.id)
-  .then(hub => {
-    if (hub) {
-      res.status(200).json(hub);
-    } else {
-      res.status(404).json({ message: 'Hub not found' });
-    }
-  })
-  .catch(error => {
-    // log error to server
-    console.log(error);
-    res.status(500).json({
-      message: 'Error retrieving the hub',
-    });
-  });
+router.get('/:id', validateId, (req, res) => {
+  res.status(200).json(req.hub);
 });
 
 router.post('/', (req, res) => {
@@ -122,5 +120,27 @@ router.post('/:id/messages', (req, res) => {
     });
   });
 });
+
+function validateId(req, res, next) {
+  const {id} = req.params;
+  Hubs.findById(id)
+    .then(hub => {
+      if(hub) {
+        req.hub = hub;
+        next();
+      } else {
+        next('does not exist');
+      }
+    })
+    .catch((err) => {
+      console.log(err);
+      res.status(500).json({ message: 'exception', err });
+    })
+}
+
+function errorHandler(error, req, res, next) {
+  console.log('error', error);
+  res.status(400).json({message: error});
+}
 
 module.exports = router;
